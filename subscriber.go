@@ -120,6 +120,17 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 		return nil, fmt.Errorf("cannot upsert consumer: %w", err)
 	}
 
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(time.Second * 10):
+				s.collectMetrics(ctx)
+			}
+		}
+	}()
+
 	s.wg.Add(1)
 
 	go func() {
@@ -217,6 +228,23 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 	return ch, nil
 }
 
+func (s *Subscriber) collectMetrics(ctx context.Context) error {
+	consumers, err := s.getConsumers(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, consumer := range consumers {
+		for _, topic := range consumer.Topics {
+			freshness := time.Duration(topic.Offset)
+
+			freshnessMetric.WithLabelValues(consumer.Consumer, topic.Topic).Set(float64(freshness.Milliseconds()))
+		}
+	}
+
+	return nil
+}
+
 func (s *Subscriber) getConsumers(ctx context.Context) ([]*GroupWithTopic, error) {
 	var groups []*GroupWithTopic
 
@@ -248,7 +276,7 @@ func (s *Subscriber) getConsumers(ctx context.Context) ([]*GroupWithTopic, error
 		}
 
 		groupWithTopic.Topics = append(groupWithTopic.Topics, TopicInfo{
-			Offset: int64(math.Min(1, float64(maxOffset-group.Offset))),
+			Offset: int64(math.Max(1, float64(maxOffset-group.Offset))),
 			Topic:  group.Topic,
 		})
 	}
