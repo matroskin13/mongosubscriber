@@ -34,12 +34,12 @@ func NewPublisher(optFns ...PublisherOptionFn) (*Publisher, error) {
 	}
 
 	if opts.db == nil {
-		client, err := getClient(opts.dbOptions.dbHost)
+		client, err := getClient(opts.dbOptions.host)
 		if err != nil {
 			return nil, err
 		}
 
-		pub.db = client.Database(opts.dbOptions.dbName)
+		pub.db = client.Database(opts.dbOptions.name)
 	} else {
 		pub.db = opts.db
 	}

@@ -10,13 +10,13 @@ type PublisherOptionFn func(*publisherOptions)
 
 func WithPublisherDBHost(host string) PublisherOptionFn {
 	return func(o *publisherOptions) {
-		o.dbOptions.dbHost = host
+		o.dbOptions.host = host
 	}
 }
 
 func WithPublisherDBName(databaseName string) PublisherOptionFn {
 	return func(o *publisherOptions) {
-		o.dbOptions.dbName = databaseName
+		o.dbOptions.name = databaseName
 	}
 }
 
@@ -36,13 +36,13 @@ type SubscriberOptionFn func(*subscriberOptions)
 
 func WithSubscriberDBHost(host string) SubscriberOptionFn {
 	return func(o *subscriberOptions) {
-		o.dbOptions.dbHost = host
+		o.dbOptions.host = host
 	}
 }
 
 func WithSubscriberDBName(databaseName string) SubscriberOptionFn {
 	return func(o *subscriberOptions) {
-		o.dbOptions.dbName = databaseName
+		o.dbOptions.name = databaseName
 	}
 }
 
@@ -65,9 +65,9 @@ func WithAlwaysStartFromZero() SubscriberOptionFn {
 }
 
 type dbOptions struct {
-	dbHost string
-	dbName string
-	db     *mongo.Database
+	host string
+	name string
+	db   *mongo.Database
 }
 
 type publisherOptions struct {

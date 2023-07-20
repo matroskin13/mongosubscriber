@@ -12,8 +12,8 @@ func newTestOptions() *subscriberOptions {
 	return &subscriberOptions{
 		consumerName: "example",
 		dbOptions: dbOptions{
-			dbName: "example",
-			dbHost: "mongodb://localhost:27017",
+			name: "example",
+			host: "mongodb://localhost:27017",
 		},
 	}
 }
@@ -28,7 +28,7 @@ func TestSubscriber(t *testing.T) {
 
 	opts := newTestOptions()
 
-	client, err := getClient(opts.dbOptions.dbHost)
+	client, err := getClient(opts.dbOptions.host)
 	if err != nil {
 		log.Fatal(err)
 	}

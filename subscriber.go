@@ -39,13 +39,13 @@ func NewSubscriber(optFns ...SubscriberOptionFn) (*Subscriber, error) {
 	}
 
 	if opts.db == nil {
-		client, err := getClient(opts.dbOptions.dbHost)
+		client, err := getClient(opts.dbOptions.host)
 		if err != nil {
 			return nil, err
 		}
 
 		sub.client = client
-		sub.db = client.Database(opts.dbOptions.dbName)
+		sub.db = client.Database(opts.dbOptions.name)
 	} else {
 		sub.db = opts.db
 	}
