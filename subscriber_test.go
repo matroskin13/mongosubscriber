@@ -8,11 +8,13 @@ import (
 	"github.com/ThreeDotsLabs/watermill/pubsub/tests"
 )
 
-func newTestOptions() *Options {
-	return &Options{
-		ConsumerName: "example",
-		Database:     "example",
-		Host:         "mongodb://localhost:27017",
+func newTestOptions() *subscriberOptions {
+	return &subscriberOptions{
+		consumerName: "example",
+		dbOptions: dbOptions{
+			name: "example",
+			host: "mongodb://localhost:27017",
+		},
 	}
 }
 
@@ -26,7 +28,7 @@ func TestSubscriber(t *testing.T) {
 
 	opts := newTestOptions()
 
-	client, err := getClient(opts)
+	client, err := getClient(opts.dbOptions.host)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -35,14 +37,38 @@ func TestSubscriber(t *testing.T) {
 		t,
 		features,
 		func(t *testing.T) (message.Publisher, message.Subscriber) {
-			sub := NewSubscriberWithDatabase(client.Database("services"), &Options{ConsumerName: "test"})
-			pub := NewPublisherWithDatabase(client.Database("services"))
+			sub, err := NewSubscriber(
+				WithSubscriberDB(client.Database("services")),
+				WithConsumerName("test"),
+			)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			pub, err := NewPublisher(
+				WithPublisherDB(client.Database("services")),
+			)
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			return pub, sub
 		},
 		func(t *testing.T, group string) (message.Publisher, message.Subscriber) {
-			sub := NewSubscriberWithDatabase(client.Database("services"), &Options{ConsumerName: "test_" + group})
-			pub := NewPublisherWithDatabase(client.Database("services"))
+			sub, err := NewSubscriber(
+				WithSubscriberDB(client.Database("services")),
+				WithConsumerName("test_"+group),
+			)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			pub, err := NewPublisher(
+				WithPublisherDB(client.Database("services")),
+			)
+			if err != nil {
+				log.Fatal(err)
+			}
 
 			return pub, sub
 		},

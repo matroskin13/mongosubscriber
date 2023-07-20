@@ -13,35 +13,38 @@ import (
 )
 
 type PublishSettings struct {
-	TTL       time.Duration
-	Collapase bool
+	TTL      time.Duration
+	Collapse bool
 }
 
 type Publisher struct {
-	publishSettings map[string]PublishSettings
-	topicsInit      *sync.Map
-	db              *mongo.Database
+	opts                 publisherOptions
+	topicPublishSettings map[string]PublishSettings
+	topicsInit           *sync.Map
+	db                   *mongo.Database
 }
 
-func NewPublisher(opts *Options) (*Publisher, error) {
-	client, err := getClient(opts)
-	if err != nil {
-		return nil, err
+func NewPublisher(optFns ...PublisherOptionFn) (*Publisher, error) {
+	opts := makePublisherOptions(optFns...)
+
+	pub := Publisher{
+		opts:                 opts,
+		topicPublishSettings: map[string]PublishSettings{},
+		topicsInit:           &sync.Map{},
 	}
 
-	return &Publisher{
-		db:              client.Database(opts.Database),
-		publishSettings: map[string]PublishSettings{},
-		topicsInit:      &sync.Map{},
-	}, nil
-}
+	if opts.db == nil {
+		client, err := getClient(opts.dbOptions.host)
+		if err != nil {
+			return nil, err
+		}
 
-func NewPublisherWithDatabase(db *mongo.Database) *Publisher {
-	return &Publisher{
-		db:              db,
-		publishSettings: map[string]PublishSettings{},
-		topicsInit:      &sync.Map{},
+		pub.db = client.Database(opts.dbOptions.name)
+	} else {
+		pub.db = opts.db
 	}
+
+	return &pub, nil
 }
 
 func (p *Publisher) Close() error {
@@ -59,7 +62,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			Metadata:  msg.Metadata,
 		}
 
-		settings := p.publishSettings[topic]
+		settings := p.topicPublishSettings[topic]
 
 		msgPublishProps, _ := msg.Context().Value(PublishProp("_props")).(publishProps)
 
@@ -69,6 +72,8 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			ttl = msgPublishProps.ttl
 		} else if settings.TTL != 0 {
 			ttl = settings.TTL
+		} else if p.opts.ttl != 0 {
+			ttl = p.opts.ttl
 		}
 
 		if ttl != 0 {
@@ -100,7 +105,7 @@ func (p *Publisher) Publish(topic string, messages ...*message.Message) error {
 			collapseProp = msgPublishProps.withCollapse
 		}
 
-		if !settings.Collapase && collapseProp == nil {
+		if !settings.Collapse && collapseProp == nil {
 			if _, err := p.db.Collection("events_"+topic).InsertOne(context.Background(), item); err != nil {
 				return err
 			}

@@ -1,4 +1,4 @@
-module github.com/matroskin13/mongosubscriber
+module github.com/matroskin13/mongosubscriber/v2
 
 go 1.16
 

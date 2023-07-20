@@ -9,18 +9,16 @@ import (
 
 	"github.com/ThreeDotsLabs/watermill"
 	"github.com/ThreeDotsLabs/watermill/message"
-	"github.com/matroskin13/mongosubscriber"
+	"github.com/matroskin13/mongosubscriber/v2"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
-	opts := &mongosubscriber.Options{
-		Host:         "mongodb://localhost:27017",
-		ConsumerName: "example",
-		Database:     "events",
-	}
-
-	sub, err := mongosubscriber.NewSubscriber(opts)
+	sub, err := mongosubscriber.NewSubscriber(
+		mongosubscriber.WithConsumerName("example"),
+		mongosubscriber.WithSubscriberDBHost("mongodb://localhost:27017"),
+		mongosubscriber.WithSubscriberDBName("events"),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -31,7 +29,11 @@ func main() {
 
 	defer sub.Close()
 
-	pub, err := mongosubscriber.NewPublisher(opts)
+	pub, err := mongosubscriber.NewPublisher(
+		mongosubscriber.WithPublisherDBHost("mongodb://localhost:27017"),
+		mongosubscriber.WithPublisherDBName("events"),
+		mongosubscriber.WithPublisherTTL(5*time.Minute),
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

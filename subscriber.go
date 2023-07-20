@@ -11,7 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
-	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
 type Subscriber struct {
@@ -23,56 +22,35 @@ type Subscriber struct {
 	isClosed bool
 	wg       *sync.WaitGroup
 	client   *mongo.Client
-	opts     *Options
+	opts     subscriberOptions
 }
 
-func NewSubscriber(opts *Options) (*Subscriber, error) {
-	client, err := getClient(opts)
-	if err != nil {
-		return nil, err
-	}
+func NewSubscriber(optFns ...SubscriberOptionFn) (*Subscriber, error) {
+	opts := makeSubscriberOptions(optFns...)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
-	return &Subscriber{
-		db:       client.Database(opts.Database),
-		consumer: opts.ConsumerName,
-		ctx:      ctx,
-		cancel:   cancel,
-		wg:       &sync.WaitGroup{},
-		client:   client,
-		opts:     opts,
-	}, nil
-}
-
-func NewSubscriberWithDatabase(database *mongo.Database, opts *Options) *Subscriber {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	sub := &Subscriber{
-		db:       database,
-		consumer: opts.ConsumerName,
+		consumer: opts.consumerName,
 		ctx:      ctx,
 		cancel:   cancel,
 		wg:       &sync.WaitGroup{},
 		opts:     opts,
 	}
 
-	return sub
-}
+	if opts.db == nil {
+		client, err := getClient(opts.dbOptions.host)
+		if err != nil {
+			return nil, err
+		}
 
-func getClient(opts *Options) (*mongo.Client, error) {
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(opts.Host))
-	if err != nil {
-		return nil, err
+		sub.client = client
+		sub.db = client.Database(opts.dbOptions.name)
+	} else {
+		sub.db = opts.db
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
-	if err := client.Ping(ctx, readpref.Primary()); err != nil {
-		return nil, err
-	}
-
-	return client, nil
+	return sub, nil
 }
 
 func (s *Subscriber) Close() error {
@@ -210,7 +188,7 @@ func (s *Subscriber) Subscribe(ctx context.Context, topic string) (<-chan *messa
 					return nil
 				}
 
-				if !s.opts.AlwaysStartFromZero {
+				if !s.opts.alwaysStartFromZero {
 					if err := s.lock(ctx, topic, partition, handler); err != nil {
 						fmt.Println(err)
 						break
